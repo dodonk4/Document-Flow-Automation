@@ -1,0 +1,70 @@
+name: Document Flow Automation
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: documentflow_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-documentflow}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db_data:/var/lib/potsgresql/data
+    healtcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-documentflow}",
+        ]
+      interval: 5s
+      tiemout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: documentflow_api
+    restart: unless-stoped
+    ports:
+      - "${API_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-documentflow}?schema=public
+      STORAGE_PATH: /app/storage
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - local_storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: documentflow_n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/Argentina/Buenos_Aires
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - api
+  volumes:
+    db_data:
+      driver: local
+    n8n_data:
+      driver: local
+    local_storage:
+      driver: local
