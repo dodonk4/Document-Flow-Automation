@@ -6,7 +6,14 @@ export class PrismaDocumentRepository implements IDocumentRepository {
     constructor(private readonly prisma: PrismaClient) { }
 
     async saveFile(props: DocumentProps): Promise<Document>{
-        const document = await this.prisma.document.create({data: props});
+        const document = await this.prisma.document.create({data: {
+            id: props.id,
+            hash: props.hash,
+            filename: props.filename,
+            status: props.status,
+            errorMessage: props.errorMessage,
+            createdAt: props.createdAt
+        }});
 
         const response = Document.reconstitute(document);
 
