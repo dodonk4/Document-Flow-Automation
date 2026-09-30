@@ -3,8 +3,8 @@ import { PDFParse, TextResult } from "pdf-parse";
 
 export class PdfParserRepository {
 
-    async parseFile(filePath: Buffer<ArrayBufferLike>): Promise<TextResult> {
-        const buffer = readFileSync(filePath);
+    async parseFile(buffer: Buffer<ArrayBufferLike>): Promise<TextResult> {
+
         const parser = new PDFParse({ data: buffer });
         const text = await parser.getText();
 
