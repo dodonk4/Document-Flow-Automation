@@ -7,6 +7,9 @@
   "type": "module",
   "main": "app.ts",
   "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc",
+    "migrate:dev": "npx prisma migrate dev",
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "prisma skills sync || exit 0"
   },
@@ -23,6 +26,7 @@
     "@types/multer": "^2.3.0",
     "dotenv": "^18.0.4",
     "eslint": "^10.11.0",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }
