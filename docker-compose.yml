@@ -12,15 +12,15 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - db_data:/var/lib/potsgresql/data
-    healtcheck:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
       test:
         [
           "CMD-SHELL",
           "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-documentflow}",
         ]
       interval: 5s
-      tiemout: 5s
+      timeout: 5s
       retries: 5
 
   api:
@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: documentflow_api
-    restart: unless-stoped
+    restart: unless-stopped
     ports:
       - "${API_PORT:-3000}:3000"
     environment:
@@ -61,10 +61,10 @@ services:
       - n8n_data:/home/node/.n8n
     depends_on:
       - api
-  volumes:
-    db_data:
-      driver: local
-    n8n_data:
-      driver: local
-    local_storage:
-      driver: local
+volumes:
+  db_data:
+    driver: local
+  n8n_data:
+    driver: local
+  local_storage:
+    driver: local
