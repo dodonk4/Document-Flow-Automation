@@ -4,7 +4,9 @@ import { PdfParserRepository } from "../../infrastructure/repositories/PdfParser
 import { SHA256Hasher } from "../../infrastructure/repositories/SHA256Hasher.ts";
 import { IDocumentRepository } from "../../interfaces/IDocumentRepository.ts";
 import { Document } from "../../domain/Document.ts";
-import { TextResult } from "pdf-parse";
+// import { TextResult } from "pdf-parse";
+import { ExtractedInvoiceData, invoiceParser } from "../../utils/invoiceParser.ts";
+import { savePdfToStorage } from "../../utils/savePDF.ts";
 
 export class ProcessDocumentUseCase{
     constructor (
@@ -14,7 +16,7 @@ export class ProcessDocumentUseCase{
 
     ){}
 
-    async execute(req: Request): Promise<TextResult>{
+    async execute(req: Request): Promise<ExtractedInvoiceData>{
         if(!req.file?.buffer){
             throw new Error("Buffer doesn't exist");
         }
@@ -38,6 +40,10 @@ export class ProcessDocumentUseCase{
 
         const data = await this.pdfExtractor.parseFile(req.file?.buffer);
 
-        return data;
+        await savePdfToStorage({fileBuffer: req.file.buffer, name: req.file.originalname});
+
+        const parsedInvoice = invoiceParser(data.text);
+
+        return parsedInvoice;
     }
 }
