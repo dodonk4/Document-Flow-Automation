@@ -24,9 +24,9 @@ RUN npm run build
 # Eliminar dependencias de desarrollo para dejar solo las de producción
 RUN npm prune --production
 
-# ==========================================
-# STAGE 2: Runner / Runtime
-# ==========================================
+# # ==========================================
+# # STAGE 2: Runner / Runtime
+# # ==========================================
 FROM node:20-alpine AS runner
 
 WORKDIR /app
@@ -52,4 +52,4 @@ USER node
 EXPOSE 3000
 
 # Comando para ejecutar la API compilada
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/src/index.js"]

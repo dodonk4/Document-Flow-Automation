@@ -1,11 +1,11 @@
 import express from "express";
-import { SHA256Hasher } from "./infrastructure/repositories/SHA256Hasher";
-import { ProcessDocumentUseCase } from "./core/processDocument/ProcessDocumentUseCase";
-import { PdfParserRepository } from "./infrastructure/repositories/PdfParserRespository";
-import { PrismaDocumentRepository } from "./infrastructure/repositories/PrismaDocumentRepository";
-import { prisma } from "./infrastructure/database/config";
-import { DocumentController } from "./api/controller";
-import { createDocumentRouter } from "./api/router";
+import { SHA256Hasher } from "./infrastructure/repositories/SHA256Hasher.ts";
+import { ProcessDocumentUseCase } from "./core/processDocument/ProcessDocumentUseCase.ts";
+import { PdfParserRepository } from "./infrastructure/repositories/PdfParserRespository.ts";
+import { PrismaDocumentRepository } from "./infrastructure/repositories/PrismaDocumentRepository.ts";
+import { prisma } from "./infrastructure/database/config.ts";
+import { DocumentController } from "./api/controller.ts";
+import { createDocumentRouter } from "./api/router.ts";
 
 const app = express();
 const port = process.env.PORT || 3000;

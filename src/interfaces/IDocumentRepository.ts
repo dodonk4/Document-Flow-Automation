@@ -1,4 +1,4 @@
-import { Document, DocumentProps } from "../domain/Document"
+import { Document, DocumentProps } from "../domain/Document.ts"
 
 export interface IDocumentRepository{
     saveFile(props: DocumentProps): Promise<Document>

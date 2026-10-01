@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Request } from "express";
-import { PdfParserRepository } from "../../infrastructure/repositories/PdfParserRespository";
-import { SHA256Hasher } from "../../infrastructure/repositories/SHA256Hasher";
+import { PdfParserRepository } from "../../infrastructure/repositories/PdfParserRespository.ts";
+import { SHA256Hasher } from "../../infrastructure/repositories/SHA256Hasher.ts";
 import { IDocumentRepository } from "../../interfaces/IDocumentRepository.ts";
 import { Document } from "../../domain/Document.ts";
 import { TextResult } from "pdf-parse";

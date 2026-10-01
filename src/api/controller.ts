@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ProcessDocumentUseCase } from "../core/processDocument/ProcessDocumentUseCase";
+import { ProcessDocumentUseCase } from "../core/processDocument/ProcessDocumentUseCase.ts";
 export class DocumentController{
     constructor(
         private readonly processDocumentUseCase: ProcessDocumentUseCase

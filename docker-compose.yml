@@ -32,13 +32,11 @@ services:
     ports:
       - "${API_PORT:-3000}:3000"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-documentflow}?schema=public
       STORAGE_PATH: /app/storage
     volumes:
-      - .:/app
-      - /app/node_modules
       - local_storage:/app/storage
     depends_on:
       db:

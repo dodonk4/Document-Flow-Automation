@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { DocumentController } from "./controller";
+import { DocumentController } from "./controller.ts";
 
 const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 }
