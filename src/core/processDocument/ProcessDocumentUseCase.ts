@@ -4,9 +4,10 @@ import { PdfParserRepository } from "../../infrastructure/repositories/PdfParser
 import { SHA256Hasher } from "../../infrastructure/repositories/SHA256Hasher.ts";
 import { IDocumentRepository } from "../../interfaces/IDocumentRepository.ts";
 import { Document } from "../../domain/Document.ts";
-// import { TextResult } from "pdf-parse";
 import { ExtractedInvoiceData, invoiceParser } from "../../utils/invoiceParser.ts";
 import { savePdfToStorage } from "../../utils/savePDF.ts";
+import { validateSchema } from "../../middleware/validateSchema.ts";
+import { invoiceSchema } from "../../schemas/invoiceSchema.ts";
 
 export class ProcessDocumentUseCase{
     constructor (
@@ -43,6 +44,8 @@ export class ProcessDocumentUseCase{
         await savePdfToStorage({fileBuffer: req.file.buffer, name: req.file.originalname});
 
         const parsedInvoice = invoiceParser(data.text);
+
+        validateSchema(invoiceSchema, parsedInvoice);
 
         return parsedInvoice;
     }
