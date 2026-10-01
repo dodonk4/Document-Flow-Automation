@@ -1,10 +1,15 @@
 export interface ExtractedInvoiceData {
+    documentId: string,
     invoiceNumber: string;
     issuerName: string;
     total: number;
 }
 
 export function invoiceParser(rawText: string): ExtractedInvoiceData {
+
+    const cuitMatch = rawText.match(/CUIT:\s*(\d{2})-?(\d{8})-?(\d{1})/);
+    const documentId = cuitMatch ? cuitMatch[2] : '';
+
     const match = rawText.match(/Apellido y Nombre \/ Razón Social:\s*([\s\S]*?)(?=\s*Condición frente al IVA)/i);
 
     let issuerName = '';
@@ -29,6 +34,7 @@ export function invoiceParser(rawText: string): ExtractedInvoiceData {
     }
 
     return {
+        documentId,
         invoiceNumber,
         issuerName,
         total,
