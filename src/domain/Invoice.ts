@@ -1,4 +1,6 @@
-interface InvoiceProps {
+import { randomUUID } from "node:crypto";
+
+export interface InvoiceProps {
     id: string,
     documentId: string,
     invoiceNumber: string,
@@ -11,7 +13,6 @@ export class Invoice {
     constructor(private readonly props: InvoiceProps) { }
 
     static create(props: {
-        id: string,
         documentId: string,
         invoiceNumber: string,
         issuerName: string,
@@ -19,6 +20,7 @@ export class Invoice {
     }): Invoice {
         return new Invoice({
             ...props,
+            id: randomUUID(),
             createdAt: new Date()
         })
     }
