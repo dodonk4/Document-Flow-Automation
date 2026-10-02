@@ -6,6 +6,7 @@ import { PrismaDocumentRepository } from "./infrastructure/repositories/PrismaDo
 import { prisma } from "./infrastructure/database/config.ts";
 import { DocumentController } from "./api/controller.ts";
 import { createDocumentRouter } from "./api/router.ts";
+import errorHandler from "./middleware/errorHandler.ts";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ const documentRouter = createDocumentRouter(
 
 app.use('/api/documents', documentRouter);
 
+app.use(errorHandler);
 
 app.get('/', (req, res) => res.send('Hello World!'))
 app.listen(port, () => console.log(`Listening on port ${port}!`))
