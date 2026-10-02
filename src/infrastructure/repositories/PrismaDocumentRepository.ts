@@ -1,9 +1,9 @@
-import { PrismaClient } from "../../../generated/prisma/client.ts";
+import { Prisma, PrismaClient } from "../../../generated/prisma/client.ts";
 import { Document, DocumentProps } from "../../domain/Document.ts";
 import { IDocumentRepository } from "../../interfaces/IDocumentRepository.ts";
 
 export class PrismaDocumentRepository implements IDocumentRepository {
-    constructor(private readonly prisma: PrismaClient) { }
+    constructor(private readonly prisma: PrismaClient | Prisma.TransactionClient) { }
 
     async saveFile(props: DocumentProps): Promise<Document>{
         const document = await this.prisma.document.create({data: {
