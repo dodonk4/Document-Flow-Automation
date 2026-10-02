@@ -1,36 +1,41 @@
-export interface ExtractedInvoiceData {
-    documentId: string,
-    invoiceNumber: string;
-    issuerName: string;
-    total: number;
+import { InvoiceDTO } from "../schemas/invoiceSchema";
+
+/**
+ * Normaliza montos en formato numérico argentino/español ("1.218.920,00" o "1218920,00")
+ * a un number nativo de JavaScript.
+ */
+function parseSpanishAmount(amountStr: string): number {
+    if (!amountStr) return 0;
+    // Remueve puntos de miles y cambia la coma decimal por punto
+    const clean = amountStr.replace(/\./g, '').replace(',', '.');
+    const parsed = parseFloat(clean);
+    return isNaN(parsed) ? 0 : parsed;
 }
 
-export function invoiceParser(rawText: string): ExtractedInvoiceData {
-
-    const cuitMatch = rawText.match(/CUIT:\s*(\d{2})-?(\d{8})-?(\d{1})/);
-    const documentId = cuitMatch ? cuitMatch[2] : '';
-
-    const match = rawText.match(/Apellido y Nombre \/ Razón Social:\s*([\s\S]*?)(?=\s*Condición frente al IVA)/i);
-
+export function invoiceParser(documentId: string, rawText: string): InvoiceDTO {
+    // Razón Social / Nombre
+    const nameMatch = rawText.match(/Apellido y Nombre \/ Razón Social:\s*([\s\S]*?)(?=\s*Condición frente al IVA)/i);
     let issuerName = '';
-
-    if (match && match[1]) {
-        issuerName = match[1].replace(/\s+/g, ' ').trim();
+    if (nameMatch && nameMatch[1]) {
+        // Limpia saltos de línea y espacios sobrantes generados por la extracción del PDF
+        issuerName = nameMatch[1].replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
-    const posMatch = rawText.match(/Punto de Venta:\s*(\d{5})/);
-    const numberMatch = rawText.match(/Comp\. Nro:\s*(\d{8})/);
-
+    // Número de comprobante (Punto de Venta + Número)
+    const posMatch = rawText.match(/Punto de Venta:\s*(\d{5})/i);
+    const numberMatch = rawText.match(/Comp\.?\s*Nro:\s*(\d{8})/i);
     const invoiceNumber = (posMatch && numberMatch)
         ? `${posMatch[1]}-${numberMatch[1]}`
         : '';
 
-    const totalMatch = rawText.match(/Importe Total:\s*(?:[A-Z]{3})?\s*\|\s*([\d.,]+)/);
+    // Extraer Importe Total robusto
+    // Soporta: "Importe Total: USD | 5855,50", "Importe Total: $ | 1218920,00", "Importe Total: $ 2167425,00", etc.
+    const totalRegex = /Importe\s+Total:\s*(?:USD|\$)?\s*(?:\|\s*)?([\d.,]+)/i;
+    const totalMatch = rawText.match(totalRegex);
+    
     let total = 0;
-
-    if (totalMatch) {
-        const rawTotal = totalMatch[1].replace(/\./g, '').replace(',', '.');
-        total = parseFloat(rawTotal);
+    if (totalMatch && totalMatch[1]) {
+        total = parseSpanishAmount(totalMatch[1]);
     }
 
     return {
