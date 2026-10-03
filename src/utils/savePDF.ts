@@ -7,7 +7,7 @@ interface SaveFileParams {
 }
 
 export async function savePdfToStorage(props: SaveFileParams): Promise<string> {
-  const storageDir = process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
+  const storageDir = path.resolve(process.env.STORAGE_PATH || path.join(process.cwd(), 'storage'));
   
   const fileName = `${props.name}.pdf`;
   const fullPath = path.join(storageDir, fileName);
