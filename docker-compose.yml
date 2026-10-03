@@ -1,6 +1,29 @@
 name: Document Flow Automation
 
 services:
+  test-db:
+    image: postgres:15-alpine
+    container_name: documentflow_test_db
+    profiles:
+      - testing
+    environment:
+      POSTGRES_USER: ${TEST_POSTGRES_USER:-documentflow_test}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:-documentflow_test}
+      POSTGRES_DB: ${TEST_POSTGRES_DB:-documentflow_test}
+    ports:
+      - "127.0.0.1:${TEST_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${TEST_POSTGRES_USER:-documentflow_test} -d ${TEST_POSTGRES_DB:-documentflow_test}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   db:
     image: postgres:15-alpine
     container_name: documentflow_db
@@ -60,6 +83,8 @@ services:
     depends_on:
       - api
 volumes:
+  test_db_data:
+    driver: local
   db_data:
     driver: local
   n8n_data:
