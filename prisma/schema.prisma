@@ -26,14 +26,14 @@ model Document {
   errorMessage String?  @map("error_message")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  invoices Invoice[]
+  invoice Invoice?
 
   @@map("documents")
 }
 
 model Invoice {
   id            String   @id @default(uuid()) @db.Uuid
-  documentId    String   @map("document_id") @db.Uuid
+  documentId    String   @unique @map("document_id") @db.Uuid
   invoiceNumber String   @map("invoice_number")
   issuerName    String   @map("issuer_name")
   total         Decimal  @db.Decimal(18, 2)
