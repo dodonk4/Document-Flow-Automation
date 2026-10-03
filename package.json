@@ -10,7 +10,10 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "migrate:dev": "npx prisma migrate dev",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsx --test test/unit/invoiceParser.test.ts",
+    "test:integration": "npx dotenv -e .env.test -- prisma migrate deploy && npx dotenv -e .env.test -- tsx --test test/integration/documents.test.ts",
+    "test:db:up": "npx dotenv -e .env.test -- docker compose --profile testing up -d --wait test-db",
+    "test:db:down": "npx dotenv -e .env.test -- docker compose --profile testing stop test-db",
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
@@ -27,7 +30,10 @@
     "@types/express": "^5.0.6",
     "@types/multer": "^2.3.0",
     "@types/node": "^26.6.3",
+    "@types/supertest": "^7.2.1",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^10.11.0",
+    "supertest": "^7.3.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
