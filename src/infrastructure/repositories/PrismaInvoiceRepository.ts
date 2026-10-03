@@ -28,7 +28,10 @@ export class PrismaInvoiceRepository implements IInvoiceRepository {
     }
 
     async findAllInvoices(): Promise<Invoice[]> {
-        const invoices = await this.prisma.invoice.findMany();
+        const invoices = await this.prisma.invoice.findMany({
+            orderBy: { createdAt: "desc" },
+            take: 50,
+        });
 
         return invoices.map(invoice => new Invoice({
             id: invoice.id,
