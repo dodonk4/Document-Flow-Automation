@@ -1,6 +1,4 @@
-import { ZodObject, ZodError } from "zod";
+import { z } from "zod";
 
-export const validateSchema =
-  (schema: ZodObject, data: any) => {
-      data = schema.parse(data);
-  }
+export const validateSchema = <T>(schema: z.ZodType<T>, data: unknown): T =>
+  schema.parse(data);
