@@ -1,10 +1,10 @@
+[🇪🇸 Español](README.es.md) | [🇬🇧 English](README.md)
+
 # Document-Flow-Automation
 
 Document-Flow-Automation es una solución backend para automatizar la recepción, validación y almacenamiento de facturas recibidas por correo electrónico. El flujo está pensado para procesar documentos PDF, extraer la información relevante y guardarla en una base de datos para que el dato quede disponible para consultas y seguimiento.
 
 El sistema está diseñado como un monolito modular orquestado por n8n y con una capa de negocio separada para facilitar pruebas, mantenimiento y demostración técnica.
-
-English version: [README.md](README.md)
 
 ## Objetivo del proyecto
 

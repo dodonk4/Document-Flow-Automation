@@ -1,10 +1,10 @@
-﻿# Document-Flow-Automation
+﻿[🇬🇧 English](README.md) | [🇪🇸 Español](README.es.md)
+
+# Document-Flow-Automation
 
 Document-Flow-Automation is a backend solution for automating the receipt, validation, and storage of invoices received by email. The workflow is designed to process PDF documents, extract the relevant information, and save it in a database so that the data remains available for queries and tracking.
 
 The system is designed as a modular monolith orchestrated by n8n, with a separate business layer to facilitate testing, maintenance, and technical demonstration.
-
-Version in Spanish: [README.es.md](README.es.md)
 
 ## Project goal
 
