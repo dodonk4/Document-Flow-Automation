@@ -17,6 +17,10 @@ export const createDocumentRouter = (
         documentController.processDocumentController
     )
 
+    router.get(
+        '/:id',
+        documentController.getDocumentController
+    )
+
     return router;
 }
-
