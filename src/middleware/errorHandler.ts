@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from "express"
 import { ZodError } from "zod";
-import { AppError } from "../domain/errors/AppError";
+import { AppError } from "../domain/errors/AppError.ts";
 
 const errorHandler = (error: Error | ZodError | AppError, __req: Request, res: Response, next: NextFunction) => {
 
