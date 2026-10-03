@@ -4,16 +4,11 @@ import { PdfParserRepository } from "../../infrastructure/repositories/PdfParser
 import { SHA256Hasher } from "../../infrastructure/repositories/SHA256Hasher.ts";
 import { IDocumentRepository } from "../../interfaces/IDocumentRepository.ts";
 import { Document } from "../../domain/Document.ts";
-import { invoiceParser } from "../../utils/invoiceParser.ts";
-import { validateSchema } from "../../middleware/validateSchema.ts";
 import { InvoiceDTO, invoiceSchema } from "../../schemas/invoiceSchema.ts";
 import { AppError } from "../../domain/errors/AppError.ts";
 import { savePdfToStorage } from "../../utils/savePDF.ts";
 import { removePDF } from "../../utils/removePDF.ts";
-import { prisma } from "../../infrastructure/database/config.ts";
-import { PrismaDocumentRepository } from "../../infrastructure/repositories/PrismaDocumentRepository.ts";
-import { PrismaInvoiceRepository } from "../../infrastructure/repositories/PrismaInvoiceRepository.ts";
-import { Invoice } from "../../domain/Invoice.ts";
+import { extractInvoice, saveDocumentAndInvoice } from "../../utils/processDocument.ts";
 
 export class ProcessDocumentUseCase {
     constructor(
@@ -23,66 +18,68 @@ export class ProcessDocumentUseCase {
 
     ) { }
 
-    // async execute(req: Request): Promise<TextResult>{
     async execute(req: Request): Promise<InvoiceDTO> {
         if (!req.file?.buffer) {
-            throw new Error("Buffer doesn't exist");
+            throw new AppError("Debe adjuntar un archivo PDF en el campo 'file'.", 400, "FILE_REQUIRED");
         }
-        const hash = await this.hasherProvider.hashFile(req.file?.buffer);
+
+        if (!req.file.buffer.subarray(0, 5).equals(Buffer.from("%PDF-"))) {
+            throw new AppError("El archivo adjunto no es un PDF válido.", 400, "INVALID_PDF");
+        }
+
+        const hash = await this.hasherProvider.hashFile(req.file.buffer);
 
         const repeatedDocument = await this.documentRepository.findByHash(hash);
 
         if (repeatedDocument) {
-            throw new AppError("File already saved", 400, "FILE_ALREADY_SAVED");
+            throw new AppError("El documento ya fue procesado anteriormente.", 409, "FILE_ALREADY_PROCESSED");
         }
 
         const document = Document.create({
             id: randomUUID(),
-            filename: req.file?.originalname,
+            filename: req.file.originalname,
             hash,
-            status: "PENDING",
+            status: "SUCCESS",
             errorMessage: null
-        })
-
-        const data = await this.pdfExtractor.parseFile(req.file?.buffer);
-
-        const parsedInvoice = invoiceParser(document.id, data.text);
-
-        const createdInvoice = Invoice.create(parsedInvoice);
-
-        validateSchema(invoiceSchema, parsedInvoice);
+        });
 
         const savedFilePath = await savePdfToStorage({
             fileBuffer: req.file.buffer,
-            name: req.file?.originalname,
+            name: document.id,
         });
 
-        const executeAtomicTransaction = async () => {
-            prisma.$transaction(async (tx) => {
-                const documentRepository2 = new PrismaDocumentRepository(tx);
-                const invoiceRepository = new PrismaInvoiceRepository(tx);
+        let parsedInvoice: InvoiceDTO;
+        
+        try {
+            parsedInvoice = await extractInvoice(
+                this.pdfExtractor,
+                document.id,
+                req.file.buffer
+            );
 
-                try {
-                    await documentRepository2.saveFile(document);
-                    await invoiceRepository.saveInvoice(createdInvoice);
-                } catch (saveError) {
-                    try {
-                        await removePDF(savedFilePath);
-                    } catch (cleanupError) {
-                        throw new AppError(
-                            "Saving the document failed, and the saved PDF could not be removed",
-                            500,
-                            "PERSISTENCE_ERROR"
-                        );
-                    }
+            await saveDocumentAndInvoice(document, parsedInvoice);
+        } catch (error) {
+            try {
+                await removePDF(savedFilePath);
+            } catch {
+                throw new AppError(
+                    "El procesamiento falló y no se pudo eliminar el PDF guardado.",
+                    500,
+                    "PROCESSING_CLEANUP_ERROR"
+                );
+            }
 
-                    throw saveError;
-                }
-            })
+            if (isUniqueConstraintError(error)) {
+                throw new AppError("El documento ya fue procesado anteriormente.", 409, "FILE_ALREADY_PROCESSED");
+            }
+            throw error;
         }
-
-        await executeAtomicTransaction();
 
         return parsedInvoice;
     }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+    return typeof error === "object" && error !== null
+        && "code" in error && error.code === "P2002";
 }
