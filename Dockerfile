@@ -8,6 +8,7 @@ WORKDIR /app
 # Copiar archivos de definición de dependencias
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma.config.ts ./prisma.config.ts
 
 # Instalar TODAS las dependencias (incluidas devDependencies para TS y compilación)
 RUN npm ci
@@ -40,6 +41,7 @@ RUN mkdir -p /app/storage && chown -R node:node /app
 # Copiar dependencias de producción y el cliente de Prisma generado
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 # Copiar el código compilado (dist) y el package.json
 COPY --from=builder /app/dist ./dist
@@ -52,4 +54,4 @@ USER node
 EXPOSE 3000
 
 # Comando para ejecutar la API compilada
-CMD ["node", "dist/src/index.js"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/src/index.js"]
