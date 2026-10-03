@@ -43,4 +43,13 @@ export class PrismaDocumentRepository implements IDocumentRepository {
         return response;
     }
 
+    async findById(id: string): Promise<Document | null> {
+        const document = await this.prisma.document.findUnique({ where: { id } });
+
+        if (!document)
+            return null;
+
+        return Document.reconstitute(document);
+    }
+
 }
