@@ -1,0 +1,403 @@
+{
+  "name": "Procesamiento de facturas por email",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment",
+          "readStatus": "unread"
+        },
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "id": "aa2dee9f-232d-41f0-a372-a22e098f830c",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "lqhEGI3xAfS7qchy",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const bin = item.binary || {};\n  for (const key of Object.keys(bin)) {\n    const b = bin[key];\n    const name = String(b.fileName || '').toLowerCase();\n    const mime = String(b.mimeType || '').toLowerCase();\n    if (mime === 'application/pdf' || name.endsWith('.pdf')) {\n      out.push({\n        json: {\n          messageId: item.json.id,\n          subject: item.json.subject || '',\n          fileName: b.fileName || key,\n        },\n        binary: { data: b },\n      });\n    }\n  }\n}\nreturn out;"
+      },
+      "id": "b5c51a49-974e-45b2-85b3-1b68400f8df0",
+      "name": "Filtrar adjuntos PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:3000/api/documents",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "b9a60412-31b9-4ae0-8804-803f844c9c1e",
+      "name": "Enviar PDF a la API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        496,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.statusCode }}",
+                    "rightValue": 201,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "201 Éxito"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.statusCode }}",
+                    "rightValue": 409,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "409 Duplicado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.statusCode }}",
+                    "rightValue": 422,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.statusCode }}",
+                    "rightValue": 500,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "422/500 Error"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Otro código"
+        }
+      },
+      "id": "3824bec8-aa08-497b-9579-ee5ac2230fb2",
+      "name": "Según código HTTP",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0C6092MWQ5",
+          "mode": "list",
+          "cachedResultName": "general-testfacturas"
+        },
+        "text": "=✅ Factura procesada exitosamente: {{ $json.body.invoiceNumber ?? $json.body.data?.invoiceNumber }} de {{ $json.body.issuerName ?? $json.body.data?.issuerName }} por un total de ${{ $json.body.total ?? $json.body.data?.total }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "71833812-2a39-4dbd-a14d-6f2577034745",
+      "name": "Slack: factura procesada",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        1024,
+        224
+      ],
+      "webhookId": "587d6fd2-6792-4e58-a667-469d0396f72b",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "QJRpYwmtZfvZrbRK",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0C6092MWQ5",
+          "mode": "list",
+          "cachedResultName": "general-testfacturas"
+        },
+        "text": "⚠️ La factura recibida ya existe en el sistema (Hash duplicado) y fue ignorada",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "bba9b140-266c-4411-9778-9d219c5d924f",
+      "name": "Slack: factura duplicada",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        1024,
+        416
+      ],
+      "webhookId": "39eafd4e-4c67-4088-90c6-f4577d625160",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "QJRpYwmtZfvZrbRK",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0C6092MWQ5",
+          "mode": "list",
+          "cachedResultName": "general-testfacturas"
+        },
+        "text": "❌ Error al procesar el documento recibido. Requiere revisión",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "ed0b1b35-914b-4f88-9529-d379c25372b7",
+      "name": "Slack: error de procesamiento",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        1024,
+        608
+      ],
+      "webhookId": "06dbafb1-d3c9-47b7-90d7-ac8090970310",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "QJRpYwmtZfvZrbRK",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Filtrar adjuntos PDF').item.json.messageId }}"
+      },
+      "id": "265badea-e741-4293-9c73-3fcc7836be83",
+      "name": "Marcar correo como leído",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        -96
+      ],
+      "webhookId": "10fa4888-1a46-469f-849c-774cfbf8938b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "lqhEGI3xAfS7qchy",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filtrar adjuntos PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar adjuntos PDF": {
+      "main": [
+        [
+          {
+            "node": "Enviar PDF a la API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar PDF a la API": {
+      "main": [
+        [
+          {
+            "node": "Según código HTTP",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Marcar correo como leído",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Según código HTTP": {
+      "main": [
+        [
+          {
+            "node": "Slack: factura procesada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack: factura duplicada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack: error de procesamiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack: error de procesamiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "16d72fc6-6f20-4186-bbb8-46ee9e5cce12",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6b8f182778c70081fad53d16a7d8668d1b1ddc20381843dc2e02679981d0e69b"
+  },
+  "nodeGroups": [
+    {
+      "id": "c50f70aa-f3ea-4c96-8945-dcab8df74b0e",
+      "name": "Enviar factura al sistema",
+      "nodeIds": [
+        "b5c51a49-974e-45b2-85b3-1b68400f8df0",
+        "b9a60412-31b9-4ae0-8804-803f844c9c1e"
+      ],
+      "description": "Toma solo los adjuntos PDF de cada correo y los sube a la API de documentos como archivo"
+    },
+    {
+      "id": "0ffd27a5-fce2-44f3-95d6-1d88c88a645e",
+      "name": "Notificar resultado",
+      "nodeIds": [
+        "3824bec8-aa08-497b-9579-ee5ac2230fb2",
+        "71833812-2a39-4dbd-a14d-6f2577034745",
+        "bba9b140-266c-4411-9778-9d219c5d924f",
+        "ed0b1b35-914b-4f88-9529-d379c25372b7"
+      ],
+      "description": "Avisa en Slack si la factura se registró, era duplicada o falló y requiere revisión manual"
+    }
+  ],
+  "id": "GTi8RTCsqTxCw3oX",
+  "tags": []
+}

@@ -65,6 +65,17 @@ services:
       db:
         condition: service_healthy
 
+  n8n-import:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n_import
+    restart: "no"
+    environment:
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - .n8n/workflows:/data/workflows
+    command: ["import:workflow", "--input=/data/workflows/document-flow-automation-workflow.json"]
+
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
     container_name: documentflow_n8n
@@ -75,13 +86,19 @@ services:
       - N8N_HOST=localhost
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       - NODE_ENV=production
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=America/Argentina/Buenos_Aires
     volumes:
       - n8n_data:/home/node/.n8n
+      - .n8n/workflows:/data/workflows
     depends_on:
-      - api
+      n8n-import:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+      
 volumes:
   test_db_data:
     driver: local
