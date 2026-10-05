@@ -248,7 +248,13 @@ docker compose up -d db
 npx prisma migrate dev
 ```
 
-### 5) Run the API in development mode
+### 5) Generate the Prisma client
+
+```bash
+npx prisma generate
+```
+
+### 6) Run the API in development mode
 
 ```bash
 npm run dev
@@ -258,17 +264,22 @@ The API will be available at:
 
 - `http://localhost:3000`
 
-### 6) Start the full stack with Docker Compose
+Choose one API runtime: use `npm run dev` for local development, or the `api` service in Docker Compose for the full stack. Both use port 3000 by default, so stop `npm run dev` before starting the full stack; do not run both at the same time.
+
+### 7) Start the full stack with Docker Compose
 
 ```bash
 docker compose up -d
 ```
 
-This starts:
+This command starts `db`, `api`, and `n8n-import`. The latter is a one-off container that imports the workflow from `.n8n/workflows/document-flow-automation-workflow.json`. It mounts that file at `/data/workflows` and shares the `n8n_data` volume with `n8n`, so the workflow is saved in the instance and available at `http://localhost:5678`. The `n8n` service waits for the import to complete successfully before starting.
+
+The stack includes:
 
 - `api`
 - `db`
 - `n8n`
+- `n8n-import` (imports the workflow and then exits)
 
 ## Tests
 
