@@ -281,6 +281,31 @@ El stack incluye:
 - `n8n`
 - `n8n-import` (importa el workflow y luego termina)
 
+## Integración con Google Drive
+
+Tras recibir `201` de la API, el workflow de n8n sube el PDF original a una carpeta de Google Drive y luego notifica en Slack con el enlace. Los duplicados (`409`) nunca se suben. No hacen falta variables de entorno nuevas ni cambios en la base de datos.
+
+Flujo: `201` → *Preparar PDF para Drive* → *Drive: subir PDF* (3 intentos, 2 s entre ellos) → mensaje de éxito en Slack con enlace a Drive; si la subida falla, Slack avisa "registrada en la base de datos pero falló la subida a Drive, requiere revisión" en lugar del mensaje de éxito.
+
+Los archivos se llaman `<issuerName>_<invoiceNumber>_<primeros 8 caracteres del documentId>.pdf` (sanitizado, sin tildes), por lo que documentos distintos no se sobrescriben.
+
+### Configuración en n8n
+
+1. Abre `http://localhost:5678` y, en el workflow importado, abre el nodo **Drive: subir PDF**.
+2. Crea una credencial **Google Drive OAuth2** (proyecto de Google Cloud con la API de Drive habilitada, cliente OAuth con URI de redirección `http://localhost:5678/rest/oauth2-credential/callback`). Las credenciales viven solo en n8n, nunca en el repositorio.
+3. En el nodo, elige la carpeta de destino (crea antes una carpeta privada en Drive). Compártela solo con quien la necesite; los archivos no se hacen públicos y el enlace de Slack solo abre para usuarios con acceso en Drive.
+4. Vuelve a seleccionar las credenciales de Gmail y Slack si tu instancia no las tiene y activa el workflow.
+
+### Consistencia y recuperación
+
+PostgreSQL, Drive y Slack no pueden actualizarse de forma atómica. El PDF sigue guardado en el volumen de la API (`local_storage`, como `<documentId>.pdf`); si la subida a Drive falla tras guardar la factura, la alerta de Slack incluye el `documentId` y el archivo puede subirse manualmente. Reprocesar el mismo archivo devuelve `409` y se ignora, por lo que la recuperación es manual por diseño. Si falla un paso posterior a la subida, el archivo ya está en Drive y la factura permanece registrada.
+
+### Verificación manual
+
+- **Caso A / B**: envía un correo con una factura válida (y luego otra distinta). Cada una debe aparecer en la carpeta de Drive y en Slack con enlace.
+- **Caso C**: reenvía exactamente el mismo PDF. Slack informa duplicado y no aparece un archivo nuevo en Drive.
+- **Fallo**: revoca la credencial de Drive y envía una factura nueva; Slack debe informar el fallo de Drive.
+
 ## Pruebas
 
 El proyecto cuenta con pruebas de alto valor orientadas a la lógica central del parser y el flujo de integración.

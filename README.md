@@ -281,6 +281,31 @@ The stack includes:
 - `n8n`
 - `n8n-import` (imports the workflow and then exits)
 
+## Google Drive integration
+
+After the API returns `201`, the n8n workflow uploads the original PDF to a Google Drive folder and then notifies Slack with a link. Duplicates (`409`) are never uploaded. No new environment variables or database changes are needed.
+
+Flow: `201` → *Preparar PDF para Drive* → *Drive: subir PDF* (3 attempts, 2s apart) → Slack success message with the Drive link; if the upload still fails, Slack reports "registered in the database but Drive upload failed, needs review" instead of a success message.
+
+File names are `<issuerName>_<invoiceNumber>_<first 8 chars of documentId>.pdf` (sanitized, accents removed), so different documents never overwrite each other.
+
+### Setup in n8n
+
+1. Open `http://localhost:5678` and, in the imported workflow, open the **Drive: subir PDF** node.
+2. Create a **Google Drive OAuth2** credential (Google Cloud project with the Drive API enabled, OAuth client with redirect URI `http://localhost:5678/rest/oauth2-credential/callback`). Credentials live only in n8n, never in the repo.
+3. In the node, pick the destination folder (create a private folder in Drive first). Share it only with the people who need access; files are not made public and the Slack link only opens for users with Drive access.
+4. Re-select the Gmail and Slack credentials if your instance does not have them, then activate the workflow.
+
+### Consistency and recovery
+
+PostgreSQL, Drive and Slack cannot be updated atomically. The PDF is still kept in the API storage volume (`local_storage`, named `<documentId>.pdf`), so if the Drive upload fails after the invoice is saved, the Slack alert includes the `documentId` and the file can be uploaded manually. Reprocessing the same file returns `409` and is ignored, so recovery is manual by design. If a later step fails after upload, the Drive file already exists; the invoice remains registered.
+
+### Manual verification
+
+- **Case A / B**: send an email with a valid invoice PDF (then a different one). Each should appear in the Drive folder and in Slack with a link.
+- **Case C**: resend the exact same PDF. Slack reports a duplicate and no new file appears in Drive.
+- **Failure**: revoke the Drive credential and send a new invoice; Slack should report the Drive failure.
+
 ## Tests
 
 The project includes high-value tests focused on the central parser logic and the integration flow.

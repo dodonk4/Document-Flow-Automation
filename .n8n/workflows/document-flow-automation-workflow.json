@@ -188,7 +188,7 @@
           "mode": "list",
           "cachedResultName": "general-testfacturas"
         },
-        "text": "=✅ Factura procesada exitosamente: {{ $json.body.invoiceNumber ?? $json.body.data?.invoiceNumber }} de {{ $json.body.issuerName ?? $json.body.data?.issuerName }} por un total de ${{ $json.body.total ?? $json.body.data?.total }}",
+        "text": "=✅ Factura procesada exitosamente: {{ $('Preparar PDF para Drive').item.json.invoiceNumber }} de {{ $('Preparar PDF para Drive').item.json.issuerName }} por un total de ${{ $('Preparar PDF para Drive').item.json.total }}\nArchivo: {{ $json.name }}\nDocumento en Google Drive: https://drive.google.com/file/d/{{ $json.id }}/view",
         "otherOptions": {
           "includeLinkToWorkflow": false
         }
@@ -198,8 +198,8 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.7,
       "position": [
-        1024,
-        224
+        1472,
+        176
       ],
       "webhookId": "587d6fd2-6792-4e58-a667-469d0396f72b",
       "credentials": {
@@ -219,7 +219,7 @@
           "mode": "list",
           "cachedResultName": "general-testfacturas"
         },
-        "text": "⚠️ La factura recibida ya existe en el sistema (Hash duplicado) y fue ignorada",
+        "text": "=⚠️ La factura recibida ya existe en el sistema (Hash duplicado) y fue ignorada. No se creó un nuevo registro ni una nueva copia en Drive. Archivo: {{ $('Filtrar adjuntos PDF').item.json.fileName }}",
         "otherOptions": {
           "includeLinkToWorkflow": false
         }
@@ -291,6 +291,80 @@
           "name": "Gmail account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const body = items[i].json.body || {};\n  const inv = body.data ?? body;\n  const safe = (s) => String(s ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60);\n  const original = $('Filtrar adjuntos PDF').itemMatching(i);\n  out.push({\n    json: {\n      documentId: inv.documentId,\n      invoiceNumber: inv.invoiceNumber,\n      issuerName: inv.issuerName,\n      total: inv.total,\n      driveFileName: `${safe(inv.issuerName) || 'emisor'}_${safe(inv.invoiceNumber) || 'factura'}_${String(inv.documentId).slice(0, 8)}.pdf`,\n    },\n    binary: { data: original.binary.data },\n  });\n}\nreturn out;"
+      },
+      "id": "5f0e6c52-3b8c-4d9a-8e55-0a1c2f6b7d11",
+      "name": "Preparar PDF para Drive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "inputDataFieldName": "data",
+        "name": "={{ $json.driveFileName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "id": "7a2d9b34-61c0-4f5e-9c1a-3d8e4b5f6a22",
+      "name": "Drive: subir PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1248,
+        176
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0C6092MWQ5",
+          "mode": "list",
+          "cachedResultName": "general-testfacturas"
+        },
+        "text": "=⚠️ Factura registrada en la base de datos, pero falló la subida a Google Drive. Requiere revisión: {{ $('Preparar PDF para Drive').item.json.invoiceNumber }} (documentId: {{ $('Preparar PDF para Drive').item.json.documentId }}). Archivo: {{ $('Preparar PDF para Drive').item.json.driveFileName }}. El PDF sigue disponible en el almacenamiento de la API.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "9c3e1f45-72d1-4a6f-8d2b-4e9f5c6a7b33",
+      "name": "Slack: error al subir a Drive",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        1472,
+        368
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "QJRpYwmtZfvZrbRK",
+          "name": "Slack account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -333,11 +407,40 @@
         ]
       ]
     },
-    "Según código HTTP": {
+    "Preparar PDF para Drive": {
+      "main": [
+        [
+          {
+            "node": "Drive: subir PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive: subir PDF": {
       "main": [
         [
           {
             "node": "Slack: factura procesada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack: error al subir a Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Según código HTTP": {
+      "main": [
+        [
+          {
+            "node": "Preparar PDF para Drive",
             "type": "main",
             "index": 0
           }
@@ -393,9 +496,12 @@
         "3824bec8-aa08-497b-9579-ee5ac2230fb2",
         "71833812-2a39-4dbd-a14d-6f2577034745",
         "bba9b140-266c-4411-9778-9d219c5d924f",
-        "ed0b1b35-914b-4f88-9529-d379c25372b7"
+        "ed0b1b35-914b-4f88-9529-d379c25372b7",
+        "5f0e6c52-3b8c-4d9a-8e55-0a1c2f6b7d11",
+        "7a2d9b34-61c0-4f5e-9c1a-3d8e4b5f6a22",
+        "9c3e1f45-72d1-4a6f-8d2b-4e9f5c6a7b33"
       ],
-      "description": "Avisa en Slack si la factura se registró, era duplicada o falló y requiere revisión manual"
+      "description": "Avisa en Slack si la factura se registró y se archivó en Drive, era duplicada o falló y requiere revisión manual"
     }
   ],
   "id": "GTi8RTCsqTxCw3oX",
