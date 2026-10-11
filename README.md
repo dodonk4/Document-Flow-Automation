@@ -327,3 +327,8 @@ docker compose --profile testing up -d --wait test-db
 ```bash
 npm run test:integration
 ```
+
+### Video demonstration
+
+https://github.com/user-attachments/assets/b5ecb3d7-47cb-4fed-9747-3e58771fca08
+
